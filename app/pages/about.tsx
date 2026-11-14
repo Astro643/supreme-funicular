@@ -38,9 +38,6 @@ export function AboutPage() {
             <b>Owner only.</b> Your Console link works once and expires in minutes.
           </li>
           <li>
-            <b>You approve every plan.</b> Nothing runs until you have seen a preview.
-          </li>
-          <li>
             <b>Never against you.</b> The bot refuses to act against the server owner or itself.
           </li>
           <li>
