@@ -1,0 +1,47 @@
+@layer base, rmx;
+
+@layer base {
+  :root{
+    --canvas:#FAFAFA; --surface:#FFFFFF; --border:#EAEAEA; --border-soft:#F0F0F0;
+    --accent:#0070F3; --accent-soft:#E8F1FD; --accent-ink:#0B5CAD;
+    --dark:#0A0A0A; --dark-2:#1F1F1F; --dark-line:#262626; --btn:#171717;
+    --ink:#171717; --ink-2:#333333; --muted:#666666; --faint:#8F8F8F; --mono-bg:#F2F2F2;
+    --emerald:#12A150; --amber:#B45309; --rose:#DC2626;
+    --display:"Geist","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --sans:"Geist","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"Geist Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --lift:0 0 0 1px rgba(0,0,0,.04),0 2px 4px rgba(0,0,0,.03),0 18px 36px -18px rgba(0,0,0,.16);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  html{scroll-behavior:smooth;scroll-padding-top:96px;scrollbar-width:thin;scrollbar-color:#D4D4D4 transparent}
+  body{background:var(--canvas);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;
+    letter-spacing:-.011em;min-height:100vh;display:flex;flex-direction:column;overflow-x:clip}
+  ::selection{background:rgba(0,112,243,.2)}
+  a{color:inherit}
+  :focus-visible{outline:2px solid rgba(0,112,243,.7);outline-offset:2px}
+
+  .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .skip{position:absolute;left:16px;top:-60px;z-index:100;background:var(--dark);color:#fff;padding:10px 14px;border-radius:8px;font:500 13px var(--sans);text-decoration:none}
+  .skip:focus{top:12px}
+
+  .brand{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:18px;letter-spacing:-.02em;text-decoration:none}
+  .logo{display:block;flex:none;width:22px;height:22px}
+  code,.mono{font-family:var(--mono);font-size:.84em;background:var(--mono-bg);border-radius:6px;padding:2px 6px;letter-spacing:0}
+
+  /* Request status badges, shared by the home demo and the Console. */
+  .badge{display:inline-flex;align-items:center;gap:7px;font:500 12.5px/1 var(--sans);letter-spacing:0;padding:7px 11px 7px 9px;border-radius:999px;white-space:nowrap}
+  .badge i{width:7px;height:7px;border-radius:50%;background:currentColor;display:block}
+  .s-processing{color:#fff;background:var(--btn)}
+  .s-processing i{background:#3291FF;animation:pulse 1.3s ease-in-out infinite}
+  .s-completed{color:#0F6B3A;background:#E3F6EA}
+  .s-waiting{color:var(--accent-ink);background:var(--accent-soft)}
+  .s-cancelled,.s-unknown{color:var(--muted);background:#F1F1F1}
+  .s-blocked_by_traffic,.s-stalled{color:#8A4B04;background:#FFF1D6}
+  .s-failed,.s-rejected{color:#B42318;background:#FDE8E6}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+}
+
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
