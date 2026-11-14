@@ -1,5 +1,5 @@
 import type { PageMeta } from "../lib/page.ts"
-import { Layout, PREFETCH } from "../ui/chrome.tsx"
+import { CONSOLE, Layout, PREFETCH } from "../ui/chrome.tsx"
 
 export const meta: PageMeta = {
   title: "About · Controller",
@@ -14,7 +14,7 @@ export function AboutPage() {
         <h1>About</h1>
         <p class="lead">Why I built Controller, what I put first, and what comes next.</p>
         <div class="cta">
-          <a class="btn btn-primary" href="/dashboard" {...PREFETCH}>Open Console</a>
+          <a class="btn btn-primary" href="/dashboard" {...CONSOLE}>Open Console</a>
           <a class="btn" href="/docs" {...PREFETCH}>Read the docs</a>
         </div>
       </div>
