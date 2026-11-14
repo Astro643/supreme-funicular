@@ -1,6 +1,6 @@
 import type { PageMeta } from "../lib/page.ts"
 import { inviteHref } from "../lib/site-config.ts"
-import { Layout } from "../ui/chrome.tsx"
+import { CONSOLE, Layout } from "../ui/chrome.tsx"
 import { ScrollCue } from "../ui/scroll-cue.tsx"
 
 export const meta: PageMeta = {
@@ -66,10 +66,10 @@ function Cta() {
       {inviteHref ? (
         <>
           <a class="btn btn-primary" href={inviteHref}>Add to Discord</a>
-          <a class="btn" href="/dashboard">Open Console</a>
+          <a class="btn" href="/dashboard" {...CONSOLE}>Open Console</a>
         </>
       ) : (
-        <a class="btn btn-primary" href="/dashboard">Open Console</a>
+        <a class="btn btn-primary" href="/dashboard" {...CONSOLE}>Open Console</a>
       )}
     </div>
   )
@@ -217,3 +217,4 @@ export function HomePage() {
     </Layout>
   )
 }
+
