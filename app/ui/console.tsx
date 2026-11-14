@@ -17,6 +17,12 @@ const LABELS: Record<string, string> = {
 // A traffic stall resumes by itself, so it is not final and keeps being polled.
 const FINAL = new Set(["cancelled", "completed", "failed", "rejected", "unknown", "stalled"])
 
+const EXAMPLES = [
+  "Post the tournament rules in #announcements, then lock #signups in 2 hours",
+  "Rename #general to #lobby and slow it to 5 seconds",
+  "How many webhooks does my server have?",
+]
+
 const STORE_KEY = "console_history_v1"
 const MAX_ITEMS = 50
 const POLL_MS = 1500
@@ -60,34 +66,112 @@ const stamp = (ts: number) => {
     : date.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + time
 }
 
-const feedStyle = css({
-  maxWidth: "680px",
-  margin: "0 auto",
-  padding: "64px 24px 210px",
-  minHeight: "100vh",
-  fontSize: "15px",
-  letterSpacing: "-.011em",
-  "& .feed": { display: "flex", flexDirection: "column", gap: "38px" },
-  "& .op": {
+const paletteStyle = css({
+  "@keyframes cp-in": {
+    from: { opacity: "0", transform: "translateY(-8px) scale(.985)" },
+    to: { opacity: "1", transform: "none" },
+  },
+  position: "fixed",
+  inset: 0,
+  zIndex: 90,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start",
+  padding: "12vh 16px 16px",
+  background: "rgba(0,0,0,.32)",
+  backdropFilter: "blur(3px)",
+  opacity: 0,
+  visibility: "hidden",
+  pointerEvents: "none",
+  transition: "opacity .16s ease,visibility 0s linear .16s",
+  "&.open": { opacity: 1, visibility: "visible", pointerEvents: "auto", transitionDelay: "0s" },
+  "& .cp-panel": {
+    width: "min(860px,100%)",
+    maxHeight: "min(640px,78dvh)",
     display: "flex",
     flexDirection: "column",
-    gap: "12px",
-    scrollMarginBottom: "200px",
-    animation: "rise .5s cubic-bezier(.2,.7,.2,1) backwards",
-  },
-  "& .bubble": {
-    alignSelf: "flex-end",
-    maxWidth: "86%",
     background: "var(--surface)",
     border: "1px solid var(--border)",
-    borderRadius: "20px 20px 6px 20px",
-    padding: "12px 18px",
-    boxShadow: "0 1px 2px rgba(17,17,19,.03)",
-    fontSize: "16px",
-    lineHeight: 1.6,
-    wordBreak: "break-word",
+    borderRadius: "16px",
+    boxShadow: "0 30px 90px -24px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.03)",
+    overflow: "hidden",
+    letterSpacing: "-.011em",
   },
-  "& .status-row": { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", paddingLeft: "4px" },
+  "&.open .cp-panel": { animation: "cp-in .18s cubic-bezier(.2,.8,.2,1)" },
+  "& .cp-head": {
+    flex: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "6px 14px 6px 24px",
+    borderBottom: "1px solid var(--border-soft)",
+  },
+  "& .cp-input": {
+    flex: 1,
+    minWidth: 0,
+    font: "400 17px var(--sans)",
+    letterSpacing: "inherit",
+    color: "var(--ink)",
+    background: "transparent",
+    border: 0,
+    outline: "none",
+    padding: "16px 0",
+  },
+  "& .cp-input::placeholder": { color: "var(--faint)" },
+  "& .cp-keys": { display: "flex", alignItems: "center", gap: "8px" },
+  "& .cp-go": {
+    width: "34px",
+    height: "34px",
+    borderRadius: "10px",
+    border: 0,
+    padding: 0,
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+    color: "var(--faint)",
+    background: "#F2F2F2",
+    transition: "background .15s ease,color .15s ease",
+  },
+  "& .cp-go svg": { width: "16px", height: "16px", display: "block" },
+  "& .cp-head.ready .cp-go": { color: "#fff", background: "var(--btn)" },
+  "& .cp-head.ready .cp-go:hover": { background: "#000" },
+  "& .cp-go:disabled": { opacity: ".5", cursor: "progress" },
+  "& .cp-esc": {
+    font: "500 12px var(--mono)",
+    color: "var(--muted)",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: "6px",
+    padding: "6px 8px",
+    cursor: "pointer",
+  },
+  "& .cp-esc:hover": { color: "var(--ink)", background: "#F5F5F5" },
+  "& .cp-hint": { flex: "none", margin: 0, padding: 0, fontSize: "13px", color: "var(--muted)", maxHeight: 0, overflow: "hidden" },
+  "& .cp-hint.on": { padding: "10px 24px", maxHeight: "80px", borderBottom: "1px solid var(--border-soft)" },
+  "& .cp-hint.err": { color: "var(--rose)" },
+  "& .cp-list": { flex: 1, minHeight: "140px", overflow: "auto", padding: "6px 8px 10px" },
+  "& .cp-label": { margin: 0, padding: "14px 16px 8px", font: "500 13px var(--sans)", color: "var(--faint)", letterSpacing: "0" },
+  "& .cp-row": {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr) auto",
+    gap: "12px",
+    alignItems: "start",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    animation: "rise .3s cubic-bezier(.2,.7,.2,1) backwards",
+  },
+  "& .cp-row:hover": { background: "#F5F5F5" },
+  "& .cp-prompt": {
+    fontSize: "15px",
+    lineHeight: 1.45,
+    color: "var(--ink)",
+    wordBreak: "break-word",
+    display: "-webkit-box",
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  },
+  "& .cp-meta": { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "6px" },
   "& .op-id": {
     fontFamily: "var(--mono)",
     fontSize: "11.5px",
@@ -97,18 +181,20 @@ const feedStyle = css({
     padding: "2px 8px",
   },
   "& .op-time": { font: "500 11.5px var(--mono)", color: "var(--muted)", fontVariantNumeric: "tabular-nums" },
-  "& .op-note": {
-    marginLeft: "4px",
+  "& .cp-note": {
+    marginTop: "8px",
     fontFamily: "var(--mono)",
     fontSize: "12px",
     lineHeight: 1.7,
     color: "var(--ink-2)",
-    background: "var(--mono-bg)",
-    borderRadius: "12px",
-    padding: "12px 14px",
+    background: "var(--canvas)",
+    border: "1px solid var(--border-soft)",
+    borderRadius: "10px",
+    padding: "10px 12px",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
   },
+  "& .cp-side": { display: "flex", alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap", gap: "8px" },
   "& .op-cancel": {
     font: "500 12px/1 var(--sans)",
     color: "var(--muted)",
@@ -121,66 +207,25 @@ const feedStyle = css({
   },
   "& .op-cancel:hover": { color: "var(--rose)", borderColor: "var(--rose)" },
   "& .op-cancel:disabled": { opacity: ".5", cursor: "progress" },
-  "@media (max-width:520px)": {
-    paddingTop: "96px",
-    "& .bubble": { maxWidth: "94%" },
-  },
-})
-
-const barStyle = css({
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 10,
-  pointerEvents: "none",
-  padding: "36px 20px calc(26px + env(safe-area-inset-bottom))",
-  background: "linear-gradient(180deg,rgba(250,250,250,0),rgba(250,250,250,.85) 32%,#FAFAFA 52%)",
-  "& > *": { pointerEvents: "auto" },
-  "& .form": { maxWidth: "680px", margin: "0 auto", position: "relative" },
-  "& .prompt": {
+  "& .cp-ex": {
     width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
     font: "inherit",
-    letterSpacing: "inherit",
+    fontSize: "15px",
+    textAlign: "left",
     color: "var(--ink)",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "14px",
-    padding: "19px 68px 19px 26px",
-    outline: "none",
-    boxShadow: "0 1px 2px rgba(0,0,0,.04),0 12px 24px -16px rgba(0,0,0,.14)",
-    transition: "border-color .15s ease,box-shadow .15s ease",
-  },
-  "& .prompt::placeholder": { color: "var(--muted)" },
-  "& .prompt:focus": {
-    borderColor: "var(--ink)",
-    boxShadow: "0 0 0 3px rgba(0,0,0,.08),0 14px 30px -14px rgba(0,0,0,.18)",
-  },
-  "& .go": {
-    position: "absolute",
-    right: "11px",
-    top: "50%",
-    transform: "translateY(-50%)",
-    width: "40px",
-    height: "40px",
-    borderRadius: "10px",
+    background: "transparent",
     border: 0,
-    padding: 0,
     cursor: "pointer",
-    display: "grid",
-    placeItems: "center",
-    color: "var(--faint)",
-    background: "#F2F2F2",
-    transition: "background .15s ease,color .15s ease,transform .15s ease",
   },
-  "& .go svg": { width: "18px", height: "18px", display: "block" },
-  "& .form.ready .go": { color: "#fff", background: "var(--btn)" },
-  "& .form.ready .go:hover": { background: "#000" },
-  "& .go:active": { transform: "translateY(-50%) scale(.93)" },
-  "& .go:disabled": { opacity: ".5", cursor: "progress" },
-  "& .hint": { maxWidth: "680px", margin: "10px auto 0", textAlign: "center", fontSize: "12px", color: "var(--muted)", minHeight: "18px" },
-  "& .hint.err": { color: "var(--rose)" },
-  "@media (pointer:coarse)": { "& .prompt": { fontSize: "16px" } },
+  "& .cp-ico": { flex: "none", width: "16px", height: "16px", color: "var(--muted)" },
+  "@media (max-width:640px)": {
+    padding: "8vh 10px 10px",
+    "& .cp-row": { gridTemplateColumns: "minmax(0,1fr)" },
+    "& .cp-side": { justifyContent: "flex-start" },
+  },
 })
 
 const modalStyle = css({
@@ -283,9 +328,11 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
   let previewFocused = false
   let timer: ReturnType<typeof setTimeout> | undefined
   let input: HTMLInputElement | undefined
-  let freshId = ""
   let polling = false
   let pausedUntil = 0
+  let isOpen = false
+  let panel: HTMLElement | undefined
+  let returnTo: HTMLElement | null = null
   const cancelling = new Set<string>()
   const polledAt = new Map<string, number>()
 
@@ -316,6 +363,35 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     focusInput()
   }
 
+  // The Console is an overlay on whatever page the person is on. It stays mounted while closed,
+  // so requests keep being tracked and the latest status is there when it opens again.
+  const open = () => {
+    if (isOpen) return
+    isOpen = true
+    returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    document.documentElement.style.overflow = "hidden"
+    refresh()
+    setTimeout(focusInput, 30)
+  }
+
+  const close = () => {
+    if (!isOpen) return
+    if (preview) closePreview()
+    isOpen = false
+    document.documentElement.style.overflow = ""
+    // A magic link lands on /dashboard; once it is closed, that page is just the home page.
+    if (location.pathname === "/dashboard") history.replaceState(null, "", "/")
+    refresh()
+    if (returnTo?.isConnected) returnTo.focus()
+    returnTo = null
+  }
+
+  const useExample = (text: string) => {
+    setDraft(text)
+    refresh()
+    focusInput()
+  }
+
   const run = async (prompt: string, plan: Plan | null) => {
     busy = true
     say()
@@ -332,7 +408,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
         return
       }
       items = [...items, { id, prompt, ts: Date.now(), status: r.data.status || "processing", note: "" }].slice(-MAX_ITEMS)
-      freshId = id
       save()
       setDraft("")
     } catch {
@@ -457,41 +532,76 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     handle.signal.addEventListener("abort", () => {
       clearInterval(tick)
       clearTimeout(timer)
+      document.documentElement.style.overflow = ""
     })
+
+    // Every "Open Console" link opens the overlay. Capture phase, so it wins over any link handling.
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        if (!(event.target instanceof Element) || !event.target.closest("[data-open-console]")) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        open()
+      },
+      { capture: true, signal: handle.signal },
+    )
+
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Escape" && preview) closePreview()
+        if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
+          event.preventDefault()
+          if (isOpen) close()
+          else open()
+          return
+        }
+        if (event.key === "Escape") {
+          if (preview) closePreview()
+          else if (isOpen) close()
+          return
+        }
+        if (event.key === "Tab" && isOpen && !preview && panel) {
+          const nodes = [...panel.querySelectorAll<HTMLElement>("button:not(:disabled), input, [href]")]
+          const first = nodes[0]
+          const last = nodes[nodes.length - 1]
+          if (!first || !last) return
+          const active = document.activeElement
+          if (!panel.contains(active) || (event.shiftKey && active === first)) {
+            event.preventDefault()
+            ;(event.shiftKey ? last : first).focus()
+          } else if (!event.shiftKey && active === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }
       },
       { signal: handle.signal },
     )
 
     poll()
-    focusInput()
+    if (location.pathname === "/dashboard") open()
   })
 
-  const feed = () =>
-    items.map((item) => (
-      <article
-        key={item.id}
-        class="op"
-        mix={ref((node) => {
-          // Scroll to a request the moment it appears, not when old history loads.
-          if (item.id !== freshId || !node.isConnected) return
-          freshId = ""
-          node.scrollIntoView({ behavior: "smooth", block: "end" })
-        })}
-      >
-        <div class="bubble">{item.prompt}</div>
-        <div class="status-row">
+  const rows = () =>
+    [...items].reverse().map((item) => (
+      <article key={item.id} class="cp-row">
+        <div>
+          <div class="cp-prompt">{item.prompt}</div>
+          <div class="cp-meta">
+            <span class="op-id">{item.id}</span>
+            <time class="op-time" datetime={new Date(item.ts).toISOString()}>
+              {stamp(item.ts)}
+            </time>
+          </div>
+          {item.note ? <div class="cp-note">{item.note}</div> : null}
+        </div>
+        <div class="cp-side">
           <span class={"badge s-" + item.status}>
             <i />
             {LABELS[item.status] || item.status}
           </span>
-          <span class="op-id">{item.id}</span>
-          <time class="op-time" datetime={new Date(item.ts).toISOString()}>
-            {stamp(item.ts)}
-          </time>
           {item.status === "waiting" ? (
             <button
               class="op-cancel"
@@ -504,7 +614,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
             </button>
           ) : null}
         </div>
-        {item.note ? <div class="op-note">{item.note}</div> : null}
       </article>
     ))
 
@@ -575,46 +684,85 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
 
   return () => (
     <>
-      <main mix={feedStyle}>
-        <h1 class="sr-only">Console</h1>
-        <section class="feed" aria-live="polite" aria-label="Requests">
-          {loaded ? feed() : null}
-        </section>
-      </main>
-      <div mix={barStyle}>
-        <form
-          class={draft.trim() ? "form ready" : "form"}
-          autoComplete="off"
-          mix={on("submit", (event) => submit(event))}
+      <div
+        class={isOpen ? "cp open" : "cp"}
+        aria-hidden={isOpen ? undefined : "true"}
+        mix={[
+          paletteStyle,
+          on("click", (event) => {
+            if (event.target === event.currentTarget) close()
+          }),
+        ]}
+      >
+        <div
+          class="cp-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Console"
+          mix={ref((node) => {
+            panel = node
+          })}
         >
-          <input
-            class="prompt"
-            type="text"
-            maxLength={2000}
-            placeholder="Describe a change to your server"
-            aria-label="Goal"
-            mix={[
-              on("input", (event) => {
-                draft = event.currentTarget.value
-                refresh()
-              }),
-              ref((node) => {
-                input = node
-              }),
-            ]}
-          />
-          <button class="go" type="submit" aria-label="Execute goal" title="Execute goal" disabled={busy}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 19V5" />
-              <path d="M5 12l7-7 7 7" />
-            </svg>
-          </button>
-        </form>
-        <p class={hintIsError ? "hint err" : "hint"} role="status">
-          {hint}
-        </p>
+          <form
+            class={draft.trim() ? "cp-head ready" : "cp-head"}
+            autoComplete="off"
+            mix={on("submit", (event) => submit(event))}
+          >
+            <input
+              class="cp-input"
+              type="text"
+              maxLength={2000}
+              placeholder="Describe a goal or ask a question…"
+              aria-label="Goal"
+              mix={[
+                on("input", (event) => {
+                  draft = event.currentTarget.value
+                  refresh()
+                }),
+                ref((node) => {
+                  input = node
+                }),
+              ]}
+            />
+            <div class="cp-keys">
+              <button class="cp-go" type="submit" aria-label="Preview goal" title="Preview goal" disabled={busy}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 19V5" />
+                  <path d="M5 12l7-7 7 7" />
+                </svg>
+              </button>
+              <button class="cp-esc" type="button" aria-label="Close console" title="Close (Esc)" mix={on("click", close)}>
+                Esc
+              </button>
+            </div>
+          </form>
+          <p class={hint ? (hintIsError ? "cp-hint on err" : "cp-hint on") : "cp-hint"} role="status">
+            {hint}
+          </p>
+          <section class="cp-list" aria-live="polite" aria-label="Requests">
+            {loaded && items.length > 0 ? (
+              <>
+                <p class="cp-label">Recent</p>
+                {rows()}
+              </>
+            ) : null}
+            <p class="cp-label">Try</p>
+            {EXAMPLES.map((text) => (
+              <div key={text} class="cp-row">
+                <button class="cp-ex" type="button" mix={on("click", () => useExample(text))}>
+                  <svg class="cp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  <span>{text}</span>
+                </button>
+              </div>
+            ))}
+          </section>
+        </div>
       </div>
       {previewModal()}
     </>
   )
 })
+
