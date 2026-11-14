@@ -86,6 +86,7 @@ export function Header() {
         </a>
         <nav aria-label="Main">
           <a href="/docs" {...PREFETCH}>Docs</a>
+          <a href="/about" {...PREFETCH}>About</a>
         </nav>
         <a class="btn btn-primary btn-sm" href="/dashboard" {...CONSOLE}>Open Console</a>
       </div>
