@@ -25,7 +25,11 @@ const headerStyle = css({
     height: "72px",
   },
   "& .bar > :last-child": { justifySelf: "end" },
-  "& .bar .logo": { color: "#000" },
+  "& .bar .logo": { color: "#000", transition: "transform .2s ease" },
+  "& .brand:hover .logo, & .brand:focus-visible .logo": { transform: "rotate(-90deg)" },
+  "@media (prefers-reduced-motion: reduce)": {
+    "& .bar .logo": { transition: "none" },
+  },
   "& nav": { display: "flex", gap: "4px" },
   "& nav a": {
     font: "400 15px var(--sans)",
