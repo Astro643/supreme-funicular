@@ -4,7 +4,6 @@ import type { Handle } from "remix/component"
 import { api, reason, store } from "./client.ts"
 
 const LABELS: Record<string, string> = {
-  processing: "Processing",
   waiting: "Waiting",
   cancelled: "Cancelled",
   completed: "Completed",
@@ -29,7 +28,6 @@ const POLL_MS = 1500
 const WAITING_POLL_MS = 10_000
 const SESSION_RETRY_MS = 30_000
 const GIVE_UP_MS = 26 * 60 * 60 * 1000
-const AUTO_RUN_MS = 9000
 const SLOW_API_MS = 45_000
 
 interface OpItem {
@@ -38,17 +36,6 @@ interface OpItem {
   ts: number
   status: string
   note: string
-}
-
-interface Plan {
-  summary?: string
-  steps?: { label?: string; action?: string }[]
-}
-
-interface PreviewData extends Plan {
-  complete?: boolean
-  incomplete?: boolean
-  question?: string
 }
 
 // Poll fast while a request is fresh, then back off. A long-running request does not need a call every 1.5s.
@@ -172,14 +159,6 @@ const paletteStyle = css({
     overflow: "hidden",
   },
   "& .cp-meta": { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "6px" },
-  "& .op-id": {
-    fontFamily: "var(--mono)",
-    fontSize: "11.5px",
-    color: "var(--muted)",
-    background: "var(--mono-bg)",
-    borderRadius: "6px",
-    padding: "2px 8px",
-  },
   "& .op-time": { font: "500 11.5px var(--mono)", color: "var(--muted)", fontVariantNumeric: "tabular-nums" },
   "& .cp-note": {
     marginTop: "8px",
@@ -228,92 +207,6 @@ const paletteStyle = css({
   },
 })
 
-const modalStyle = css({
-  "@keyframes fade": { from: { opacity: "0" }, to: { opacity: "1" } },
-  "@keyframes countdown": { from: { transform: "scaleX(1)" }, to: { transform: "scaleX(0)" } },
-  position: "fixed",
-  inset: 0,
-  zIndex: 100,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "20px",
-  background: "rgba(0,0,0,.4)",
-  backdropFilter: "blur(8px)",
-  animation: "fade .2s ease both",
-  "& .preview-card": {
-    width: "100%",
-    maxWidth: "520px",
-    maxHeight: "82vh",
-    overflow: "auto",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: "16px",
-    padding: "28px 26px 22px",
-    boxShadow: "var(--lift),0 40px 90px -30px rgba(5,5,5,.45)",
-    animation: "rise .35s cubic-bezier(.2,.7,.2,1) backwards",
-  },
-  "& .preview-title": { margin: "0 0 6px", font: "500 28px/1.1 var(--display)", letterSpacing: "-.035em" },
-  "& .preview-question": {
-    margin: "14px 0",
-    padding: "12px 14px",
-    borderRadius: "10px",
-    background: "#FFEBC7",
-    color: "#8A4B04",
-    fontWeight: 600,
-    fontSize: "14.5px",
-  },
-  "& .preview-summary": { margin: "8px 0 18px", color: "var(--muted)", fontSize: "14.5px" },
-  "& .preview-h": { margin: "18px 0 10px", font: "600 11.5px/1 var(--mono)", textTransform: "uppercase", letterSpacing: ".09em", color: "var(--muted)" },
-  "& .preview-steps": { display: "flex", flexDirection: "column", gap: "8px", margin: 0, padding: 0, listStyle: "none" },
-  "& .preview-step": {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "12px",
-    background: "var(--canvas)",
-    border: "1px solid var(--border)",
-    color: "var(--ink)",
-    borderRadius: "10px",
-    padding: "11px 14px",
-    fontSize: "14px",
-    lineHeight: 1.5,
-  },
-  "& .preview-step-num": {
-    flex: "none",
-    display: "grid",
-    placeItems: "center",
-    width: "24px",
-    height: "24px",
-    borderRadius: "7px",
-    background: "var(--btn)",
-    color: "#fff",
-    font: "700 12px var(--mono)",
-  },
-  "& .preview-empty": { margin: 0, color: "var(--muted)", fontStyle: "italic" },
-  "& .preview-timer": {
-    height: "3px",
-    margin: "22px 0 0",
-    borderRadius: "3px",
-    background: "var(--btn)",
-    transformOrigin: "left",
-    animation: `countdown ${AUTO_RUN_MS}ms linear forwards`,
-  },
-  "& .preview-auto": { margin: "8px 0 0", font: "500 12px var(--mono)", color: "var(--muted)" },
-  "& .preview-actions": { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "22px" },
-  "& .preview-btn": {
-    font: "500 14px/1 var(--sans)",
-    letterSpacing: "-.011em",
-    borderRadius: "999px",
-    padding: "13px 22px",
-    cursor: "pointer",
-    transition: "background .15s,transform .08s,border-color .15s",
-  },
-  "& .preview-cancel": { background: "transparent", color: "var(--ink)", border: "1px solid var(--border)" },
-  "& .preview-cancel:hover": { background: "rgba(5,5,5,.05)" },
-  "& .preview-confirm": { background: "var(--btn)", color: "#fff", border: 0 },
-  "& .preview-confirm:hover": { background: "#000" },
-  "& .preview-confirm:active": { transform: "translateY(1px)" },
-})
 
 export const Console = clientEntry(import.meta.url, function Console(handle: Handle) {
   let items: OpItem[] = []
@@ -322,11 +215,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
   let hintIsError = false
   let draft = ""
   let busy = false
-  let preview: PreviewData | undefined
-  let previewPrompt = ""
-  let previewPlan: Plan | null = null
-  let previewFocused = false
-  let timer: ReturnType<typeof setTimeout> | undefined
   let input: HTMLInputElement | undefined
   let polling = false
   let pausedUntil = 0
@@ -354,15 +242,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     if (!handle.signal.aborted) say("Network error. Please try again.", true)
   }
 
-  const closePreview = () => {
-    clearTimeout(timer)
-    preview = undefined
-    previewFocused = false
-    busy = false
-    refresh()
-    focusInput()
-  }
-
   // The Console is an overlay on whatever page the person is on. It stays mounted while closed,
   // so requests keep being tracked and the latest status is there when it opens again.
   const open = () => {
@@ -376,7 +255,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
 
   const close = () => {
     if (!isOpen) return
-    if (preview) closePreview()
     isOpen = false
     document.documentElement.style.overflow = ""
     // A magic link lands on /dashboard; once it is closed, that page is just the home page.
@@ -392,13 +270,13 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     focusInput()
   }
 
-  const run = async (prompt: string, plan: Plan | null) => {
+  const run = async (prompt: string) => {
     busy = true
-    say()
+    say("Sending your request…")
     refresh()
     try {
       const r = await api<{ command_id?: string; status?: string }>("/api/execute", {
-        body: plan ? { prompt, plan } : { prompt },
+        body: { prompt },
         timeout: SLOW_API_MS,
         signal: handle.signal,
       })
@@ -410,6 +288,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
       items = [...items, { id, prompt, ts: Date.now(), status: r.data.status || "processing", note: "" }].slice(-MAX_ITEMS)
       save()
       setDraft("")
+      say("Request queued.")
     } catch {
       networkError()
     } finally {
@@ -421,52 +300,10 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     }
   }
 
-  // Runs the previewed plan, or sends an unclear request back to the input for more detail.
-  const accept = () => {
-    if (!preview) return
-    const plan = previewPlan
-    const prompt = previewPrompt
-    const question = preview.question
-    clearTimeout(timer)
-    preview = undefined
-    previewFocused = false
-    if (plan) {
-      run(prompt, plan)
-      return
-    }
-    setDraft(prompt)
-    busy = false
-    say(question || "Add more detail and run it again.")
-    refresh()
-    focusInput()
-  }
-
-  const submit = async (event: SubmitEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault()
     const prompt = draft.trim()
-    if (!prompt || busy) return
-    busy = true
-    say()
-    refresh()
-    try {
-      const r = await api<PreviewData>("/api/preview", { body: { prompt }, timeout: SLOW_API_MS, signal: handle.signal })
-      if (!r.ok) {
-        say(reason(r, "Could not generate preview."), true)
-        return
-      }
-      preview = r.data
-      previewPrompt = prompt
-      previewPlan = r.data.complete && !r.data.incomplete ? { summary: r.data.summary, steps: r.data.steps } : null
-      if (previewPlan) timer = setTimeout(accept, AUTO_RUN_MS)
-    } catch {
-      networkError()
-    } finally {
-      if (!preview) busy = false
-      if (!handle.signal.aborted) {
-        refresh()
-        if (!preview) focusInput()
-      }
-    }
+    if (prompt && !busy) run(prompt)
   }
 
   const cancelOp = async (item: OpItem) => {
@@ -531,7 +368,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     }, POLL_MS)
     handle.signal.addEventListener("abort", () => {
       clearInterval(tick)
-      clearTimeout(timer)
       document.documentElement.style.overflow = ""
     })
 
@@ -558,11 +394,10 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
           return
         }
         if (event.key === "Escape") {
-          if (preview) closePreview()
-          else if (isOpen) close()
+          if (isOpen) close()
           return
         }
-        if (event.key === "Tab" && isOpen && !preview && panel) {
+        if (event.key === "Tab" && isOpen && panel) {
           const nodes = [...panel.querySelectorAll<HTMLElement>("button:not(:disabled), input, [href]")]
           const first = nodes[0]
           const last = nodes[nodes.length - 1]
@@ -590,7 +425,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
         <div>
           <div class="cp-prompt">{item.prompt}</div>
           <div class="cp-meta">
-            <span class="op-id">{item.id}</span>
             <time class="op-time" datetime={new Date(item.ts).toISOString()}>
               {stamp(item.ts)}
             </time>
@@ -598,10 +432,12 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
           {item.note ? <div class="cp-note">{item.note}</div> : null}
         </div>
         <div class="cp-side">
-          <span class={"badge s-" + item.status}>
-            <i />
-            {LABELS[item.status] || item.status}
-          </span>
+          {item.status !== "processing" && item.status !== "running" ? (
+            <span class={"badge s-" + item.status}>
+              <i />
+              {LABELS[item.status] || item.status}
+            </span>
+          ) : null}
           {item.status === "waiting" ? (
             <button
               class="op-cancel"
@@ -616,71 +452,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
         </div>
       </article>
     ))
-
-  const previewModal = () => {
-    if (!preview) return null
-    const needsAnswer = !previewPlan
-    return (
-      <div
-        class="preview-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="preview-title"
-        mix={[
-          modalStyle,
-          on("click", (event) => {
-            if (event.target === event.currentTarget) closePreview()
-          }),
-        ]}
-      >
-        <div class="preview-card">
-          <h2 class="preview-title" id="preview-title">
-            Preview (Dry Run)
-          </h2>
-          {needsAnswer ? <p class="preview-question">{preview.question || "Can you clarify your request?"}</p> : null}
-          {preview.summary ? <p class="preview-summary">{preview.summary}</p> : null}
-          <h3 class="preview-h">Planned steps</h3>
-          {preview.steps && preview.steps.length > 0 ? (
-            <ol class="preview-steps">
-              {preview.steps.map((step, index) => (
-                <li key={index} class="preview-step">
-                  <span class="preview-step-num">{String(index + 1)}</span>
-                  <span>{step.label || step.action}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p class="preview-empty">No steps generated.</p>
-          )}
-          {previewPlan ? (
-            <>
-              <div class="preview-timer" aria-hidden="true" />
-              <p class="preview-auto">Runs automatically unless you cancel.</p>
-            </>
-          ) : null}
-          <div class="preview-actions">
-            <button class="preview-btn preview-cancel" type="button" mix={on("click", closePreview)}>
-              Cancel
-            </button>
-            <button
-              class="preview-btn preview-confirm"
-              type="button"
-              mix={[
-                on("click", accept),
-                ref((node) => {
-                  if (previewFocused || !node.isConnected) return
-                  previewFocused = true
-                  node.focus()
-                }),
-              ]}
-            >
-              {needsAnswer ? "Edit request" : "Execute"}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return () => (
     <>
@@ -725,7 +496,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
               ]}
             />
             <div class="cp-keys">
-              <button class="cp-go" type="submit" aria-label="Preview goal" title="Preview goal" disabled={busy}>
+              <button class="cp-go" type="submit" aria-label="Send request" title="Send request" disabled={busy}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 19V5" />
                   <path d="M5 12l7-7 7 7" />
@@ -761,7 +532,6 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
           </section>
         </div>
       </div>
-      {previewModal()}
     </>
   )
 })

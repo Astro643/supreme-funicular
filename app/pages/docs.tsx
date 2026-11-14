@@ -4,7 +4,7 @@ import { Layout } from "../ui/chrome.tsx"
 export const meta: PageMeta = {
   title: "Docs · Controller",
   description:
-    "How to use the Controller Console: getting started, writing goals, previews, request statuses, safety and how requests run under the hood.",
+    "How to use the Controller Console: getting started, writing goals, request statuses, safety and how requests run under the hood.",
   styles: ["/site.css"],
 }
 
@@ -49,8 +49,8 @@ export function DocsPage() {
 
         <h2 id="console">Using the Console</h2>
         <p>
-          Describe a change in plain language and press execute. Controller first shows you a preview: either a short plan
-          with the steps it intends to run, or — if your message was a question — a direct answer.
+          Describe a goal in plain language and press execute. Controller sends it directly to the agent and shows the
+          request status as it runs.
         </p>
         <p>
           The Console opens over whatever page you are on, from any Open Console button. Press{" "}
@@ -61,12 +61,8 @@ export function DocsPage() {
         </p>
         <ul>
           <li>
-            <b>Preview.</b> You always see what will happen before it happens. If the request is unclear, the preview
-            becomes a question instead — press edit request, add the missing detail, and run it again.
-          </li>
-          <li>
-            <b>Auto-execute.</b> A clear plan executes itself after a short countdown, shown as a bar under the steps.
-            Press cancel if you changed your mind — nothing runs until you confirm or the countdown ends.
+            <b>Direct execution.</b> Requests start as soon as you press execute, without a preview or confirmation
+            step. Double-check the goal and its targets before sending, then follow progress in the Console.
           </li>
           <li>
             <b>Tracking.</b> Each request appears in your Console with a live status. Your last 50 requests are kept in
@@ -85,7 +81,7 @@ export function DocsPage() {
             channels”.
           </li>
           <li>
-            <b>One outcome per request.</b> Ten small requests are easier to preview, track and cancel than one giant one.
+            <b>One outcome per request.</b> Ten small requests are easier to track and cancel than one giant one.
           </li>
           <li>
             <b>Questions are free.</b> Ask “how many webhooks does my server have?” — questions get answers, not actions.
@@ -144,10 +140,6 @@ export function DocsPage() {
             <b>Never against you.</b> The bot refuses to act against the server owner or itself.
           </li>
           <li>
-            <b>You approve every plan.</b> Nothing runs until a preview is confirmed — by you or the countdown, which you
-            can always cancel.
-          </li>
-          <li>
             <b>Small footprint.</b> Your request history stays in your browser. Server history and audit records are
             removed automatically after 30 days.
           </li>
@@ -172,10 +164,7 @@ export function DocsPage() {
         </p>
         <ul>
           <li>
-            <code>POST /api/preview</code> — turn a prompt into a plan or an answer.
-          </li>
-          <li>
-            <code>POST /api/execute</code> — start a plan (or a prompt) and get a request id.
+            <code>POST /api/execute</code> — start a request from a prompt and get a request id.
           </li>
           <li>
             <code>GET /api/status/:id</code> — current status and result of a request.
