@@ -52,6 +52,13 @@ export function DocsPage() {
           Describe a change in plain language and press execute. Controller first shows you a preview: either a short plan
           with the steps it intends to run, or — if your message was a question — a direct answer.
         </p>
+        <p>
+          The Console opens over whatever page you are on, from any Open Console button. Press{" "}
+          <span class="mono">Ctrl</span> + <span class="mono">K</span> (<span class="mono">⌘</span> +{" "}
+          <span class="mono">K</span> on a Mac) to open it from anywhere, and <span class="mono">Esc</span> to close it.
+          Closing it stops nothing: your requests keep running, and the Console shows their latest status when you open it
+          again.
+        </p>
         <ul>
           <li>
             <b>Preview.</b> You always see what will happen before it happens. If the request is unclear, the preview
@@ -154,8 +161,8 @@ export function DocsPage() {
 
         <h2 id="support">Support and status</h2>
         <p>
-          The chat bubble on every page except the Console shows live system status and an AI assistant that answers
-          questions about Controller, around the clock.
+          The chat bubble on every page shows live system status and an AI assistant that answers questions about
+          Controller, around the clock.
         </p>
 
         <h2 id="api">API</h2>
