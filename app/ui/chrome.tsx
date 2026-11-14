@@ -3,9 +3,13 @@ import type { Handle, RemixNode } from "remix/component"
 
 import { hasContact, inviteHref, supportHref, supportMail } from "../lib/site-config.ts"
 import { Logo } from "./logo.tsx"
+import { Console } from "./console.tsx"
 import { SupportWidget } from "./support-widget.tsx"
 
 export const PREFETCH = { "data-rmx-prefetch": "intent" } as const
+
+/** Marks a link that opens the Console overlay. The href stays as the fallback when scripts are off. */
+export const CONSOLE = { "data-open-console": "true" } as const
 
 const headerStyle = css({
   position: "sticky",
@@ -83,7 +87,7 @@ export function Header() {
         <nav aria-label="Main">
           <a href="/docs" {...PREFETCH}>Docs</a>
         </nav>
-        <a class="btn btn-primary btn-sm" href="/dashboard" {...PREFETCH}>Open Console</a>
+        <a class="btn btn-primary btn-sm" href="/dashboard" {...CONSOLE}>Open Console</a>
       </div>
     </header>
   )
@@ -103,7 +107,7 @@ export function Footer() {
           </div>
           <div class="links">
             <h4>Product</h4>
-            <a href="/dashboard" {...PREFETCH}>Console</a>
+            <a href="/dashboard" {...CONSOLE}>Console</a>
             <a href="/docs" {...PREFETCH}>Docs</a>
             <a href="/about" {...PREFETCH}>About</a>
             {inviteHref ? <a href={inviteHref}>Add to Discord</a> : null}
@@ -130,7 +134,7 @@ export function Footer() {
   )
 }
 
-/** Header, main content, footer and support widget, shared by every page except the Console. */
+/** Header, main content, footer, Console overlay and support widget, shared by every page. */
 export function Layout(handle: Handle<{ children?: RemixNode }>) {
   return () => (
     <>
@@ -140,24 +144,23 @@ export function Layout(handle: Handle<{ children?: RemixNode }>) {
         <div class="wrap">{handle.props.children}</div>
       </main>
       <Footer />
+      <Console />
       <SupportWidget />
     </>
   )
 }
 
-export function ContactLine() {
-  return () => {
-    if (supportMail && supportHref) {
-      return (
-        <>
-          <a href={"mailto:" + supportMail}>{supportMail}</a>
-          {" or "}
-          <a href={supportHref}>our Discord server</a>
-        </>
-      )
-    }
-    if (supportMail) return <a href={"mailto:" + supportMail}>{supportMail}</a>
-    if (supportHref) return <a href={supportHref}>our Discord server</a>
-    return <span>please contact whoever operates this bot for your server.</span>
+export function ContactLine(): RemixNode {
+  if (supportMail && supportHref) {
+    return (
+      <>
+        <a href={"mailto:" + supportMail}>{supportMail}</a>
+        {" or "}
+        <a href={supportHref}>our Discord server</a>
+      </>
+    )
   }
+  if (supportMail) return <a href={"mailto:" + supportMail}>{supportMail}</a>
+  if (supportHref) return <a href={supportHref}>our Discord server</a>
+  return <span>please contact whoever operates this bot for your server.</span>
 }
