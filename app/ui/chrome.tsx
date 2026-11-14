@@ -145,17 +145,19 @@ export function Layout(handle: Handle<{ children?: RemixNode }>) {
   )
 }
 
-export function ContactLine(): RemixNode {
-  if (supportMail && supportHref) {
-    return (
-      <>
-        <a href={"mailto:" + supportMail}>{supportMail}</a>
-        {" or "}
-        <a href={supportHref}>our Discord server</a>
-      </>
-    )
+export function ContactLine() {
+  return () => {
+    if (supportMail && supportHref) {
+      return (
+        <>
+          <a href={"mailto:" + supportMail}>{supportMail}</a>
+          {" or "}
+          <a href={supportHref}>our Discord server</a>
+        </>
+      )
+    }
+    if (supportMail) return <a href={"mailto:" + supportMail}>{supportMail}</a>
+    if (supportHref) return <a href={supportHref}>our Discord server</a>
+    return <span>please contact whoever operates this bot for your server.</span>
   }
-  if (supportMail) return <a href={"mailto:" + supportMail}>{supportMail}</a>
-  if (supportHref) return <a href={supportHref}>our Discord server</a>
-  return <span>please contact whoever operates this bot for your server.</span>
 }
