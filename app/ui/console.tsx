@@ -394,7 +394,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
 
   const run = async (prompt: string, plan: Plan | null) => {
     busy = true
-    say()
+    say("Sending your request…")
     refresh()
     try {
       const r = await api<{ command_id?: string; status?: string }>("/api/execute", {
@@ -446,7 +446,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     const prompt = draft.trim()
     if (!prompt || busy) return
     busy = true
-    say()
+    say("Sending your request…")
     refresh()
     try {
       const r = await api<PreviewData>("/api/preview", { body: { prompt }, timeout: SLOW_API_MS, signal: handle.signal })
