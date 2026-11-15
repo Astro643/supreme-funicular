@@ -3,9 +3,9 @@
   "framework": null,
   "buildCommand": null,
   "outputDirectory": "public",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
   "functions": {
-    "api/[[...path]].mjs": {
+    "api/index.mjs": {
       "maxDuration": 60,
       "includeFiles": "{app/**,public/**,node_modules/**}"
     }
