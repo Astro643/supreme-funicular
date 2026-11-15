@@ -17,6 +17,7 @@ import "remix/middleware/static"
 import "remix/multiple-import-maps-polyfill"
 import "remix/router"
 import "remix/routes"
+import "@oxc-project/runtime/package.json" with { type: "json" }
 
 // Lightning CSS resolves its platform-specific native binding through a dynamic require.
 import { createRequire } from "node:module"
