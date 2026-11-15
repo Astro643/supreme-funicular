@@ -5,6 +5,7 @@
 // source paths (clientEntry uses import.meta.url). So the app has to run from source here too: register
 // the same loader that `node --import remix/node-tsx` registers, then import the router.
 import "remix/node-tsx"
+import "remix/fetch-proxy"
 
 const { router } = await import("../app/router.ts")
 
