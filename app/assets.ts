@@ -8,8 +8,8 @@ export const assets = createAssetServer({
   basePath: "/assets",
   rootDir: process.cwd(),
 
-  allowFiles: ["app/routes.ts", "app/**/public/**", "app/ui/**"],
-  allowPackages: ["remix"],
+  allowFiles: ["app/routes.ts", "app/**/public/**", "app/ui/**", "node_modules/remix/**"],
+  allowPackages: ["@remix-run/component", "@remix-run/multiple-import-maps-polyfill"],
   denyFiles: ["app/**/*.test.*"],
   sourceMaps: isDevelopment ? "external" : undefined,
   minify: !isDevelopment,

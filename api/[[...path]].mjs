@@ -6,6 +6,27 @@
 // the same loader that `node --import remix/node-tsx` registers, then import the router.
 import "remix/node-tsx"
 
+// Make dependencies used by the runtime-loaded TypeScript routes visible to Vercel's tracer.
+import "remix/assets"
+import "remix/component"
+import "remix/component/jsx-runtime"
+import "remix/component/server"
+import "remix/fetch-proxy"
+import "remix/middleware/render"
+import "remix/middleware/static"
+import "remix/multiple-import-maps-polyfill"
+import "remix/router"
+import "remix/routes"
+import "@oxc-project/runtime/package.json" with { type: "json" }
+
+// Lightning CSS resolves its platform-specific native binding through a dynamic require.
+import { createRequire } from "node:module"
+
+const require = createRequire(import.meta.url)
+require("../tsconfig.json")
+require("lightningcss-linux-x64-gnu")
+require("@types/dom-navigation/package.json")
+
 const { router } = await import("../app/router.ts")
 
 export default {
