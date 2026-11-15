@@ -3,6 +3,7 @@
   "framework": null,
   "buildCommand": null,
   "outputDirectory": "public",
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/api" }],
   "functions": {
     "api/[[...path]].mjs": {
       "maxDuration": 60,
