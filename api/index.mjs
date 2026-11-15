@@ -5,7 +5,18 @@
 // source paths (clientEntry uses import.meta.url). So the app has to run from source here too: register
 // the same loader that `node --import remix/node-tsx` registers, then import the router.
 import "remix/node-tsx"
+
+// Make dependencies used by the runtime-loaded TypeScript routes visible to Vercel's tracer.
+import "remix/assets"
+import "remix/component"
+import "remix/component/jsx-runtime"
+import "remix/component/server"
 import "remix/fetch-proxy"
+import "remix/middleware/render"
+import "remix/middleware/static"
+import "remix/multiple-import-maps-polyfill"
+import "remix/router"
+import "remix/routes"
 
 const { router } = await import("../app/router.ts")
 
