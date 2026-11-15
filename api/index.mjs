@@ -18,6 +18,12 @@ import "remix/multiple-import-maps-polyfill"
 import "remix/router"
 import "remix/routes"
 
+// Lightning CSS resolves its platform-specific native binding through a dynamic require.
+import { createRequire } from "node:module"
+
+const require = createRequire(import.meta.url)
+require("lightningcss-linux-x64-gnu")
+
 const { router } = await import("../app/router.ts")
 
 export default {
