@@ -7,7 +7,7 @@
   "functions": {
     "api/index.mjs": {
       "maxDuration": 60,
-      "includeFiles": "{app,public,node_modules/remix,node_modules/@remix-run}/**"
+      "includeFiles": "{app,public}/**"
     }
   }
 }
