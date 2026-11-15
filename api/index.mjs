@@ -22,6 +22,7 @@ import "remix/routes"
 import { createRequire } from "node:module"
 
 const require = createRequire(import.meta.url)
+require("../tsconfig.json")
 require("lightningcss-linux-x64-gnu")
 
 const { router } = await import("../app/router.ts")
