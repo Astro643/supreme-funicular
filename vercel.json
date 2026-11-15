@@ -3,11 +3,10 @@
   "framework": null,
   "buildCommand": null,
   "outputDirectory": "public",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
   "functions": {
-    "api/index.mjs": {
+    "api/[[...path]].mjs": {
       "maxDuration": 60,
-      "includeFiles": "{app,public}/**"
+      "includeFiles": ["app/**", "public/**", "node_modules/**"]
     }
   }
 }
