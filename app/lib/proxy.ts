@@ -1,7 +1,7 @@
 // Forwards /api/* to the backend. This is a normal route action (see routes.ts), not a middleware.
 import { createFetchProxy } from "remix/fetch-proxy"
 
-const backend = (process.env.BACKEND_URL ?? "https://didactic-doodle-iota.vercel.app").replace(/\/+$/, "")
+const backend = (process.env.BACKEND_URL ?? "https://didactic-doodle-three.vercel.app").replace(/\/+$/, "")
 const TIMEOUT_MS = 60_000
 
 // fetch-proxy keeps redirects (magic-link sign-in) and their cookies for the browser, rewrites Set-Cookie
