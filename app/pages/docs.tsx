@@ -159,18 +159,24 @@ export function DocsPage() {
 
         <h2 id="api">API</h2>
         <p>
-          The Console talks to a small JSON API. All endpoints live under <code>/api</code> and are tied to your Console
-          session:
+          The Console sends agent requests through same-origin routes. The frontend server forwards the existing
+          session cookie and attaches its private agent API key:
         </p>
         <ul>
           <li>
-            <code>POST /api/execute</code> — start a request from a prompt and get a request id.
+            <code>POST /api/controller/agent/preview</code> — turn a prompt into a plan or clarifying question.
           </li>
           <li>
-            <code>GET /api/status/:id</code> — current status and result of a request.
+            <code>POST /api/controller/agent/execute</code> — start the previewed plan.
           </li>
           <li>
-            <code>POST /api/cancel/:id</code> — cancel a running request.
+            <code>GET /api/controller/agent/status/:id</code> — poll status, result, or pending approval.
+          </li>
+          <li>
+            <code>POST /api/controller/agent/approve/:id</code> — approve or reject a requested action.
+          </li>
+          <li>
+            <code>POST /api/controller/agent/cancel/:id</code> — cancel a waiting agent request.
           </li>
           <li>
             <code>GET /api/public/status</code> — system status feed.

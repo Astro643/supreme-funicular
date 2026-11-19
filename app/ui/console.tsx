@@ -5,6 +5,7 @@ import { api, reason, store } from "./client.ts"
 
 const LABELS: Record<string, string> = {
   waiting: "Waiting",
+  awaiting_approval: "Approval required",
   cancelled: "Cancelled",
   completed: "Completed",
   blocked_by_traffic: "Traffic stall",
@@ -22,7 +23,7 @@ const EXAMPLES = [
   "How many webhooks does my server have?",
 ]
 
-const STORE_KEY = "console_history_v1"
+const STORE_KEY = "console_history_v2"
 const MAX_ITEMS = 50
 const POLL_MS = 1500
 const WAITING_POLL_MS = 10_000
@@ -36,6 +37,17 @@ interface OpItem {
   ts: number
   status: string
   note: string
+  approval?: { approval_token: string; label?: string; tool?: string }
+  approvalPending?: boolean
+}
+
+interface PreviewData {
+  complete?: boolean
+  incomplete?: boolean
+  question?: string
+  summary?: string
+  steps?: { label?: string; action?: string; requires_confirmation?: boolean }[]
+  agent_plan?: Record<string, unknown>
 }
 
 // Poll fast while a request is fresh, then back off. A long-running request does not need a call every 1.5s.
@@ -137,6 +149,56 @@ const paletteStyle = css({
   "& .cp-hint.on": { padding: "10px 24px", maxHeight: "80px", borderBottom: "1px solid var(--border-soft)" },
   "& .cp-hint.err": { color: "var(--rose)" },
   "& .cp-list": { flex: 1, minHeight: "140px", overflow: "auto", padding: "6px 8px 10px" },
+  "& .cp-preview": { padding: "18px 24px 24px" },
+  "& .cp-preview-question": {
+    margin: "0 0 14px",
+    padding: "12px 14px",
+    borderRadius: "10px",
+    background: "#FFEBC7",
+    color: "#8A4B04",
+    fontSize: "14px",
+  },
+  "& .cp-preview-summary": { color: "var(--muted)", fontSize: "14px", margin: "0 0 18px" },
+  "& .cp-preview-steps": { display: "flex", flexDirection: "column", gap: "8px" },
+  "& .cp-preview-step": {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    background: "var(--canvas)",
+    border: "1px solid var(--border-soft)",
+    borderRadius: "10px",
+    padding: "11px 14px",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  "& .cp-preview-approval": { color: "var(--amber)", font: "500 11px var(--mono)" },
+  "& .cp-preview-actions": { display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" },
+  "& .cp-preview-btn": {
+    font: "500 13px var(--sans)",
+    color: "var(--muted)",
+    background: "transparent",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    padding: "9px 14px",
+    cursor: "pointer",
+  },
+  "& .cp-preview-run, & .op-approve": {
+    color: "#000",
+    background: "var(--emerald)",
+    borderColor: "var(--emerald)",
+  },
+  "& .cp-preview-btn:disabled": { opacity: ".5", cursor: "progress" },
+  "& .cp-preview-num": {
+    flex: "none",
+    display: "grid",
+    placeItems: "center",
+    width: "23px",
+    height: "23px",
+    borderRadius: "7px",
+    background: "#E5E5E5",
+    color: "var(--ink)",
+    font: "700 12px var(--mono)",
+  },
   "& .cp-label": { margin: 0, padding: "14px 16px 8px", font: "500 13px var(--sans)", color: "var(--faint)", letterSpacing: "0" },
   "& .cp-row": {
     display: "grid",
@@ -186,6 +248,7 @@ const paletteStyle = css({
   },
   "& .op-cancel:hover": { color: "var(--rose)", borderColor: "var(--rose)" },
   "& .op-cancel:disabled": { opacity: ".5", cursor: "progress" },
+  "& .cp-approval-label": { flex: "1 1 100%", color: "var(--amber)", fontSize: "12px" },
   "& .cp-ex": {
     width: "100%",
     display: "flex",
@@ -215,6 +278,8 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
   let hintIsError = false
   let draft = ""
   let busy = false
+  let preview: PreviewData | undefined
+  let previewPrompt = ""
   let input: HTMLInputElement | undefined
   let polling = false
   let pausedUntil = 0
@@ -234,7 +299,12 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     draft = value
     if (input) input.value = value
   }
-  const save = () => store.save(STORE_KEY, items, MAX_ITEMS)
+  const save = () =>
+    store.save(
+      STORE_KEY,
+      items.map(({ approval: _approval, approvalPending: _pending, ...item }) => item),
+      MAX_ITEMS,
+    )
   const patch = (id: string, change: Partial<OpItem>) => {
     items = items.map((item) => (item.id === id ? { ...item, ...change } : item))
   }
@@ -270,25 +340,83 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
     focusInput()
   }
 
-  const run = async (prompt: string) => {
+  const previewGoal = async (prompt: string) => {
     busy = true
-    say("Sending your request…")
+    say("Preparing a preview…")
     refresh()
     try {
-      const r = await api<{ command_id?: string; status?: string }>("/api/execute", {
+      const r = await api<PreviewData>("/api/controller/agent/preview", {
         body: { prompt },
+        timeout: SLOW_API_MS,
+        signal: handle.signal,
+      })
+      if (!r.ok) say(reason(r, "Could not generate a preview."), true)
+      else {
+        preview = r.data
+        previewPrompt = prompt
+        say("")
+      }
+    } catch {
+      networkError()
+    } finally {
+      busy = false
+      if (!handle.signal.aborted) {
+        refresh()
+        if (!preview) focusInput()
+      }
+    }
+  }
+
+  const clearPreview = () => {
+    preview = undefined
+    previewPrompt = ""
+    refresh()
+    focusInput()
+  }
+
+  const editPreview = () => {
+    const prompt = previewPrompt
+    const question = preview?.question
+    preview = undefined
+    previewPrompt = ""
+    setDraft(prompt)
+    say(question || "Edit the request and try again.")
+    refresh()
+    focusInput()
+  }
+
+  const executePlan = async () => {
+    if (!preview) return
+    const data = preview
+    const prompt = previewPrompt
+    if (data.incomplete || !data.complete || !data.agent_plan) {
+      editPreview()
+      return
+    }
+
+    preview = undefined
+    previewPrompt = ""
+    busy = true
+    say("Starting the agent…")
+    refresh()
+    try {
+      const r = await api<{ command_id?: string; status?: string }>("/api/controller/agent/execute", {
+        body: { agent_plan: data.agent_plan },
         timeout: SLOW_API_MS,
         signal: handle.signal,
       })
       const id = r.data.command_id
       if (!r.ok || !id) {
-        say(reason(r, "Could not queue that goal."), true)
+        say(reason(r, "Could not start that request."), true)
         return
       }
-      items = [...items, { id, prompt, ts: Date.now(), status: r.data.status || "processing", note: "" }].slice(-MAX_ITEMS)
+      items = [
+        ...items,
+        { id, prompt, ts: Date.now(), status: r.data.status || "processing", note: "" },
+      ].slice(-MAX_ITEMS)
       save()
       setDraft("")
-      say("Request queued.")
+      say("Request started.")
     } catch {
       networkError()
     } finally {
@@ -303,14 +431,39 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
   const submit = (event: SubmitEvent) => {
     event.preventDefault()
     const prompt = draft.trim()
-    if (prompt && !busy) run(prompt)
+    if (prompt && !busy && !preview) previewGoal(prompt)
+  }
+
+  const approveOp = async (item: OpItem, approved: boolean) => {
+    if (!item.approval || item.approvalPending) return
+    patch(item.id, { approvalPending: true })
+    refresh()
+    try {
+      const r = await api("/api/controller/agent/approve/" + encodeURIComponent(item.id), {
+        method: "POST",
+        body: { approval_token: item.approval.approval_token, approved },
+        signal: handle.signal,
+      })
+      if (!r.ok) {
+        say(reason(r, "Could not submit that decision."), true)
+        patch(item.id, { approvalPending: false })
+      } else {
+        patch(item.id, { status: "processing", approval: undefined, approvalPending: false })
+        say("")
+      }
+      save()
+    } catch {
+      networkError()
+      patch(item.id, { approvalPending: false })
+    }
+    refresh()
   }
 
   const cancelOp = async (item: OpItem) => {
     cancelling.add(item.id)
     refresh()
     try {
-      const r = await api("/api/cancel/" + encodeURIComponent(item.id), { method: "POST", signal: handle.signal })
+      const r = await api("/api/controller/agent/cancel/" + encodeURIComponent(item.id), { method: "POST", signal: handle.signal })
       if (r.ok) {
         patch(item.id, { status: "cancelled", note: "" })
         save()
@@ -335,9 +488,12 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
           polledAt.set(item.id, now)
           if (now - item.ts > GIVE_UP_MS) return patch(item.id, { status: "stalled" })
           try {
-            const r = await api<{ status?: string; error?: string; result?: string }>("/api/status/" + encodeURIComponent(item.id), {
-              signal: handle.signal,
-            })
+            const r = await api<{
+              status?: string
+              error?: string
+              result?: string
+              approval?: { approval_token?: string; label?: string; tool?: string }
+            }>("/api/controller/agent/status/" + encodeURIComponent(item.id), { signal: handle.signal })
             if (r.status === 401) {
               pausedUntil = Date.now() + SESSION_RETRY_MS
               return say(reason(r, ""), true)
@@ -345,7 +501,26 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
             if (r.status === 404) return patch(item.id, { status: "unknown", note: "" })
             if (!r.ok || !r.data.status) return
             const note = r.data.error || r.data.result || ""
-            if (r.data.status !== item.status || note !== item.note) patch(item.id, { status: r.data.status, note })
+            const approval =
+              r.data.status === "awaiting_approval" && typeof r.data.approval?.approval_token === "string"
+                ? {
+                    approval_token: r.data.approval.approval_token,
+                    label: r.data.approval.label,
+                    tool: r.data.approval.tool,
+                  }
+                : undefined
+            if (
+              r.data.status !== item.status ||
+              note !== item.note ||
+              approval?.approval_token !== item.approval?.approval_token
+            ) {
+              patch(item.id, {
+                status: r.data.status,
+                note,
+                approval,
+                approvalPending: false,
+              })
+            }
           } catch {}
         }),
       )
@@ -449,6 +624,29 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
               Cancel
             </button>
           ) : null}
+          {item.status === "awaiting_approval" && item.approval ? (
+            <>
+              <span class="cp-approval-label">
+                {item.approval.label || item.approval.tool || "An action needs your approval"}
+              </span>
+              <button
+                class="op-cancel"
+                type="button"
+                disabled={item.approvalPending}
+                mix={on("click", () => approveOp(item, false))}
+              >
+                Reject
+              </button>
+              <button
+                class="op-cancel op-approve"
+                type="button"
+                disabled={item.approvalPending}
+                mix={on("click", () => approveOp(item, true))}
+              >
+                Approve
+              </button>
+            </>
+          ) : null}
         </div>
       </article>
     ))
@@ -485,6 +683,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
               maxLength={2000}
               placeholder="Describe a goal or ask a question…"
               aria-label="Goal"
+              disabled={busy || Boolean(preview)}
               mix={[
                 on("input", (event) => {
                   draft = event.currentTarget.value
@@ -496,7 +695,7 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
               ]}
             />
             <div class="cp-keys">
-              <button class="cp-go" type="submit" aria-label="Send request" title="Send request" disabled={busy}>
+              <button class="cp-go" type="submit" aria-label="Preview goal" title="Preview goal" disabled={busy || Boolean(preview)}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 19V5" />
                   <path d="M5 12l7-7 7 7" />
@@ -511,24 +710,72 @@ export const Console = clientEntry(import.meta.url, function Console(handle: Han
             {hint}
           </p>
           <section class="cp-list" aria-live="polite" aria-label="Requests">
-            {loaded && items.length > 0 ? (
-              <>
-                <p class="cp-label">Recent</p>
-                {rows()}
-              </>
-            ) : null}
-            <p class="cp-label">Try</p>
-            {EXAMPLES.map((text) => (
-              <div key={text} class="cp-row">
-                <button class="cp-ex" type="button" mix={on("click", () => useExample(text))}>
-                  <svg class="cp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14" />
-                    <path d="M5 12h14" />
-                  </svg>
-                  <span>{text}</span>
-                </button>
+            {preview ? (
+              <div class="cp-preview">
+                <h3 class="cp-label">Plan preview</h3>
+                {preview.incomplete || !preview.complete || !preview.agent_plan ? (
+                  <p class="cp-preview-question">{preview.question || "Can you clarify your request?"}</p>
+                ) : null}
+                {preview.summary ? <p class="cp-preview-summary">{preview.summary}</p> : null}
+                <div class="cp-preview-steps">
+                  {preview.steps?.length ? (
+                    preview.steps.map((step, index) => (
+                      <div class="cp-preview-step" key={index}>
+                        <span class="cp-preview-num">{String(index + 1)}</span>
+                        <span>
+                          {step.label || step.action || "Step"}
+                          {step.requires_confirmation ? (
+                            <small class="cp-preview-approval">{" · approval required"}</small>
+                          ) : null}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p class="cp-preview-summary">No steps generated.</p>
+                  )}
+                </div>
+                <div class="cp-preview-actions">
+                  <button class="cp-preview-btn" type="button" mix={on("click", clearPreview)}>
+                    Cancel
+                  </button>
+                  {(preview.incomplete || !preview.complete || !preview.agent_plan) ? (
+                    <button class="cp-preview-btn cp-preview-run" type="button" mix={on("click", editPreview)}>
+                      Edit request
+                    </button>
+                  ) : (
+                    <>
+                      <button class="cp-preview-btn" type="button" mix={on("click", editPreview)}>
+                        Edit request
+                      </button>
+                      <button class="cp-preview-btn cp-preview-run" type="button" disabled={busy} mix={on("click", executePlan)}>
+                        Run
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            ))}
+            ) : (
+              <>
+                {loaded && items.length > 0 ? (
+                  <>
+                    <p class="cp-label">Recent</p>
+                    {rows()}
+                  </>
+                ) : null}
+                <p class="cp-label">Try</p>
+                {EXAMPLES.map((text) => (
+                  <div key={text} class="cp-row">
+                    <button class="cp-ex" type="button" mix={on("click", () => useExample(text))}>
+                      <svg class="cp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                      <span>{text}</span>
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
           </section>
         </div>
       </div>
