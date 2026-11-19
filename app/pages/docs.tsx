@@ -159,8 +159,8 @@ export function DocsPage() {
 
         <h2 id="api">API</h2>
         <p>
-          The Console sends agent requests through same-origin routes. The frontend server forwards the existing
-          session cookie and attaches its private agent API key:
+          The Console sends agent requests through same-origin routes. For testing, a signed-in session is not required;
+          the frontend server attaches its private agent API key. Existing cookies are forwarded when present:
         </p>
         <ul>
           <li>
