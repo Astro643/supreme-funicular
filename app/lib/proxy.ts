@@ -49,7 +49,6 @@ async function forwardAgent(
   if (!key) return agentError("Agent API is not configured.", 503)
 
   const cookie = request.headers.get("cookie")
-  if (!cookie) return agentError("Session expired. Run /dashboard in your server for a fresh link.", 401)
 
   let url: URL
   try {
@@ -66,7 +65,7 @@ async function forwardAgent(
       method,
       headers: {
         authorization: `Bearer ${key}`,
-        cookie,
+        ...(cookie ? { cookie } : {}),
         ...(body === undefined ? {} : { "content-type": "application/json" }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -74,6 +73,12 @@ async function forwardAgent(
       redirect: "error",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
+    if (upstream.status === 401) {
+      const error = await upstream.clone().json().catch(() => ({} as { detail?: unknown }))
+      if (error.detail === "unauthorized") {
+        return agentError("The agent backend rejected its server credential. Check AGENT_API_KEY.", 502)
+      }
+    }
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
